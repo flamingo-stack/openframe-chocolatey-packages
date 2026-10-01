@@ -1,0 +1,22 @@
+# Curated Chocolatey packages mirrored from community.chocolatey.org into the OpenFrame feed.
+# Only the wrapper (.nupkg) is mirrored; installers are downloaded from the vendor at install time.
+# Dependencies declared in each .nuspec are resolved and mirrored automatically by scripts/sync-community.py.
+source: https://community.chocolatey.org/api/v2/
+
+packages:
+  - id: chocolatey            # the CLI itself; agents bootstrap choco 2.x from OUR feed, never from community
+    version: latest
+  - id: googlechrome
+    version: latest
+  - id: 7zip
+    version: latest
+  - id: notepadplusplus
+    version: latest
+  - id: vlc
+    version: latest
+  - id: git
+    version: latest
+  - id: firefox
+    version: latest
+  - id: adobereader
+    version: latest

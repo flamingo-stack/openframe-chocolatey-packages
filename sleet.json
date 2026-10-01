@@ -1,0 +1,12 @@
+{
+  "username": "",
+  "useremail": "",
+  "sources": [
+    {
+      "name": "feed",
+      "type": "local",
+      "path": "/work/feed",
+      "baseURI": "https://gateway.example.openframe.ai/choco/v3/"
+    }
+  ]
+}
