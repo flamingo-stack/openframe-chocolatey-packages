@@ -2,10 +2,11 @@
 """Pack packages/<id>/ into downloads/<id>.<version>.nupkg without choco/nuget (the build runner is Linux).
 
 A .nupkg is an OPC zip: the .nuspec at the root, tools/** as declared, plus [Content_Types].xml and _rels/.rels.
-Records the result in catalog.json (reason "own") so CATALOG.md and the audit trail cover our packages too.
+Records the result in catalog.json (reason "own") so CATALOG.md covers our packages too.
 """
 import hashlib
 import json
+import re
 import time
 import uuid
 import xml.etree.ElementTree as ET
@@ -51,14 +52,16 @@ def pack(pkg_dir: Path):
         z.writestr("[Content_Types].xml", CONTENT_TYPES)
         z.writestr("_rels/.rels", RELS.format(nuspec=nuspec.name))
     data = out.read_bytes()
+    install = pkg_dir / "tools" / "chocolateyInstall.ps1"
+    script = install.read_text() if install.exists() else ""
     deps = [{"id": d.attrib["id"], "range": d.attrib.get("version", "")} for d in root.iterfind(".//n:dependency", ns)]
     return {
         "id": pkg_id, "version": version, "reason": "own", "file": out.name,
         "size_bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(),
         "community": {"download_url": "", "package_hash_algorithm": "", "package_hash": "", "published": ""},
         "license_url": text("licenseUrl"), "project_url": text("projectUrl"), "authors": text("authors"),
-        "dependencies": deps, "has_install_script": (pkg_dir / "tools" / "chocolateyInstall.ps1").exists(),
-        "vendor_urls": ["https://<ServerUrl>/v0/api/assets/download?agent=client&platform=windows"] if pkg_id == "openframe-client" else [],
+        "dependencies": deps, "has_install_script": bool(script),
+        "vendor_urls": sorted(set(re.findall(r"https?://[^\s'\"<>)`]+", script))),
         "vendor_checksums": {}, "embeds_binary": False,
     }
 

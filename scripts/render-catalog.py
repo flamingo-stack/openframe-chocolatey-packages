@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render docs/CATALOG.md from catalog.json (written by sync-community.py)."""
+"""Render CATALOG.md from catalog.json (written by sync-community.py)."""
 import json
 import zipfile
 from pathlib import Path
@@ -54,5 +54,5 @@ out.append("| file | sha256 (ours) | community hash | published |")
 out.append("|---|---|---|---|")
 for p in pk:
     out.append(f"| {p['file']} | `{p['sha256'][:16]}…` | {p['community']['package_hash_algorithm']} `{p['community']['package_hash'][:16]}…` | {p['community']['published'][:10]} |")
-(ROOT / "docs" / "CATALOG.md").write_text("\n".join(out) + "\n")
-print("docs/CATALOG.md written")
+(ROOT / "CATALOG.md").write_text("\n".join(out) + "\n")
+print("CATALOG.md written")
