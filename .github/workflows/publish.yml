@@ -124,7 +124,7 @@ jobs:
             if ($LASTEXITCODE -notin 0, 3010) { throw "$id failed with exit code $LASTEXITCODE" }
             Write-Host "::endgroup::"
           }
-          choco list --source test
+          choco search --source test
 
       - name: Uninstall
         shell: pwsh
