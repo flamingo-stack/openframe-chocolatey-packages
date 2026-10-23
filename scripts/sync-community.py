@@ -4,14 +4,16 @@
 Reads packages.yaml, resolves the dependency closure declared in each .nuspec, downloads every
 .nupkg into downloads/, and writes catalog.json with provenance (source URL, hash, size,
 dependencies, vendor download URLs + checksums extracted from tools/chocolateyInstall.ps1).
-No installers are downloaded: the feed stays link-only.
+Installers are not fetched separately: whatever the .nupkg embeds is all the feed holds.
 """
+import base64
 import hashlib
 import io
 import json
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -54,10 +56,12 @@ def get(url: str, accept="application/atom+xml", retries=4) -> bytes:
             with urllib.request.urlopen(req, timeout=60) as r:
                 return r.read()
         except urllib.error.HTTPError as e:
-            if e.code in (429, 503) and attempt < retries - 1:
-                time.sleep(5 * (attempt + 1))  # community feed rate-limits aggressively
-                continue
-            raise
+            if e.code not in (429, 503) or attempt == retries - 1:  # community feed rate-limits aggressively
+                raise
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == retries - 1:
+                raise
+        time.sleep(5 * (attempt + 1))
 
 
 def prop(entry, name):
@@ -89,9 +93,15 @@ def find_versions(source: str, pkg_id: str):
     return entries
 
 
+def version_key(v: str):
+    """Numeric NuGet version order; prereleases are already filtered out."""
+    return tuple(int(x) if x.isdigit() else 0 for x in v.split("-")[0].split("."))
+
+
 def pick(entries, wanted: str):
+    # highest version, not newest published: a fix to an older line can be published after a newer release
     if wanted == "latest":
-        return entries[0]
+        return max(entries, key=lambda e: version_key(e["version"]))
     for e in entries:
         if e["version"] == wanted:
             return e
@@ -160,6 +170,9 @@ def main():
         print(f"[{reason}] {pkg_id} {version}", file=sys.stderr)
         entry = pick(find_versions(source, pkg_id), version)
         data = get(entry["download_url"], accept="application/octet-stream")
+        algo = entry["package_hash_algorithm"].lower()
+        if base64.b64encode(hashlib.new(algo, data).digest()).decode() != entry["package_hash"]:
+            raise SystemExit(f"{pkg_id} {entry['version']}: {algo} differs from the community PackageHash")
         meta, script = nuspec_meta(data)
         fname = f"{meta['id']}.{meta['version']}.nupkg"
         (DOWNLOADS / fname).write_bytes(data)

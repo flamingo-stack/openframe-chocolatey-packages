@@ -1,99 +1,100 @@
-# Sync curated packages from community.chocolatey.org, build the static NuGet v3 feed with Sleet,
-# prove it installs with choco 2.x on Windows, then rsync it into the GCS feed bucket.
-#
-# Repository variables (Settings > Secrets and variables > Actions > Variables):
-#   FEED_BASE_URI                    https://choco.<env public domain>/ (tf output feed_url minus index.json; baked into the feed)
-#   FEED_BUCKET                      github-wif-xxxx-choco-feed         (tf output feed_bucket)
-#   GCP_WORKLOAD_IDENTITY_PROVIDER   projects/N/locations/global/workloadIdentityPools/github/providers/github-oidc
-#                                                                       (tf output github_workload_identity_provider)
-# No secrets: auth is Workload Identity Federation, bound in openframe-saas-tf openframe-saas/dev/shared/03-github-wif to this repo's main branch only.
+name: Publish Chocolatey Feed
 
-name: Sync & publish Chocolatey feed
+# =============================================================================
+# WORKFLOW CONFIGURATION
+# =============================================================================
+# 1) Mirrors packages.yaml from community.chocolatey.org and packs packages/*.
+# 2) Installs them with choco 2.x on Windows from a localhost copy of the feed.
+# 3) On main, builds the feed per env (baseURI is baked into every URL) and rsyncs it to choco/ of that env's
+#    client feed bucket, through WIF bound to this repo's main branch (openframe-saas-tf 00-wif + 03-shared).
+
+permissions:
+  contents: read
 
 on:
   schedule:
-    - cron: "17 5 * * *" # daily; community re-publishes checksum-pinned packages (Chrome) within a day of a vendor release
+    - cron: "17 5 * * *"   # daily; community re-publishes checksum-pinned packages (Chrome) within a day of a vendor release
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - packages.yaml
+      - packages/**
+      - scripts/**
+      - .github/workflows/publish.yml
   push:
     branches: [main]
     paths:
       - packages.yaml
       - packages/**
-      - overrides/**
       - scripts/**
       - .github/workflows/publish.yml
 
 concurrency:
-  group: feed # one publish at a time; a parallel rsync would interleave two feeds
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  TEST_PACKAGES: 7zip googlechrome notepadplusplus firefox
+  SLEET_VERSION: "7.2.0"
+  TEST_PACKAGES: "7zip googlechrome notepadplusplus firefox"
+
+# =============================================================================
+# JOBS
+# =============================================================================
 
 jobs:
   build:
-    name: Sync from community & build feed
+    name: Build
     runs-on: ubuntu-latest
-    outputs:
-      package_count: ${{ steps.summary.outputs.package_count }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
-      - name: Sync curated packages + dependency closure from community.chocolatey.org
+      - name: Sync packages from community.chocolatey.org
         run: python3 scripts/sync-community.py
 
-      - name: Pack own packages (packages/*) — no choco on Linux, the .nupkg is built as an OPC zip
+      - name: Pack own packages
         run: python3 scripts/pack-own.py
 
       - name: Render catalog
-        run: python3 scripts/render-catalog.py
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
+        run: |
+          python3 scripts/render-catalog.py
+          cat CATALOG.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install Sleet
         run: |
-          dotnet tool install -g sleet
+          dotnet tool install -g sleet --version "$SLEET_VERSION"
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
-      - name: Build feed for the public feed URL (what goes to the bucket)
-        run: scripts/build-feed.sh feed "${{ vars.FEED_BASE_URI }}"
-
-      - name: Build feed for the Windows install test (served from localhost on the runner)
+      - name: Build test feed
         run: scripts/build-feed.sh feed-test "http://localhost:8080/"
 
-      - name: Summary
-        id: summary
-        run: |
-          count=$(python3 -c "import json;print(len(json.load(open('catalog.json'))['packages']))")
-          echo "package_count=$count" >> "$GITHUB_OUTPUT"
-          { echo "## Feed: $count packages, $(du -sh feed | cut -f1)"; echo; sed -n '1,40p' docs/CATALOG.md; } >> "$GITHUB_STEP_SUMMARY"
-
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: feed
-          path: feed
-          retention-days: 7
-      - uses: actions/upload-artifact@v4
+          name: packages
+          path: |
+            downloads
+            catalog.json
+            CATALOG.md
+          if-no-files-found: error
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v7
         with:
           name: feed-test
           path: feed-test
+          if-no-files-found: error
           retention-days: 1
-      - uses: actions/upload-artifact@v4
-        with:
-          name: catalog
-          path: |
-            catalog.json
-            docs/CATALOG.md
-          retention-days: 30
 
-  test-install:
-    name: choco 2.x install test (Windows)
+
+  test_install:
+    name: Install Test
     needs: build
-    runs-on: windows-latest # ships Chocolatey CLI preinstalled
+    runs-on: windows-latest   # ships Chocolatey CLI
+    timeout-minutes: 30
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: feed-test
           path: feed-test
@@ -105,19 +106,19 @@ jobs:
           Start-Sleep 3
           Invoke-WebRequest http://localhost:8080/index.json -UseBasicParsing | Select-Object -ExpandProperty StatusCode
 
-      - name: Require Chocolatey CLI 2.x (NuGet v3)
+      - name: Require Chocolatey CLI 2.x
         shell: pwsh
         run: |
           $v = (choco --version).Trim()
           Write-Host "choco $v"
           if ([version]$v -lt [version]"2.0.0") { throw "choco $v cannot read a v3 feed" }
 
-      - name: Install from our feed only
+      - name: Install from the feed only
         shell: pwsh
         run: |
           choco source disable -n chocolatey
           choco source add -n test -s http://localhost:8080/index.json --priority 1
-          foreach ($id in "${{ env.TEST_PACKAGES }}".Split(" ")) {
+          foreach ($id in $env:TEST_PACKAGES.Split(" ")) {
             Write-Host "::group::choco install $id"
             choco install $id -s test -y --no-progress
             if ($LASTEXITCODE -notin 0, 3010) { throw "$id failed with exit code $LASTEXITCODE" }
@@ -125,55 +126,67 @@ jobs:
           }
           choco list --source test
 
-      - name: Uninstall (proves the uninstall scripts too)
+      - name: Uninstall
         shell: pwsh
         run: |
-          foreach ($id in "${{ env.TEST_PACKAGES }}".Split(" ")) {
+          foreach ($id in $env:TEST_PACKAGES.Split(" ")) {
             choco uninstall $id -y --no-progress -x
           }
 
+
   publish:
-    name: Publish to GCS
-    needs: [build, test-install]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    name: "Publish: ${{ matrix.env }}"
+    needs: [build, test_install]
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # commit catalog.json + docs/CATALOG.md back as the audit trail
-      id-token: write   # OIDC token for Workload Identity Federation
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env: dev
+            base_uri: https://feed.openframe.build/choco/
+            bucket: shared-j62b-client-feed
+            provider: projects/492931088817/locations/global/workloadIdentityPools/github/providers/github-oidc
+          - env: stage
+            base_uri: https://feed.openframe.miami/choco/
+            bucket: shared-d8ue-client-feed
+            provider: projects/440334309161/locations/global/workloadIdentityPools/github/providers/github-oidc
+          - env: prod
+            base_uri: https://feed.openframe.ai/choco/
+            bucket: shared-4t5d-client-feed
+            provider: projects/49201622058/locations/global/workloadIdentityPools/github/providers/github-oidc
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
         with:
-          name: feed
-          path: feed
-      - uses: actions/download-artifact@v4
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
         with:
-          name: catalog
+          name: packages
 
-      - uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          # no service_account: the principalSet is bound to the bucket directly
-
-      - uses: google-github-actions/setup-gcloud@v2
-
-      - name: rsync feed into the bucket
-        # Two passes so Cloud CDN (USE_ORIGIN_HEADERS) gets the right Cache-Control per file class:
-        #   metadata JSON changes on every publish → max-age=60; *.nupkg names carry the version → immutable for a year.
-        # -c compares checksums, otherwise every regenerated .nupkg (new mtime, same bytes) is re-uploaded daily
-        # -d removes objects for packages dropped from packages.yaml (no versioning on the bucket; the next run is the rollback)
-        # -x excludes from both sides, so each pass leaves the other class's objects alone
+      - name: Install Sleet
         run: |
-          gsutil -m -h "Cache-Control:public, max-age=31536000, immutable" \
-            rsync -r -c -d -x '^(?!.*\.nupkg$).*' feed/ "gs://${{ vars.FEED_BUCKET }}/"
-          gsutil -m -h "Cache-Control:public, max-age=60" \
-            rsync -r -c -d -x '.*\.nupkg$' feed/ "gs://${{ vars.FEED_BUCKET }}/"
+          dotnet tool install -g sleet --version "$SLEET_VERSION"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
-      - name: Commit catalog
+      - name: Build feed
+        env:
+          BASE_URI: ${{ matrix.base_uri }}
+        run: scripts/build-feed.sh feed "$BASE_URI"
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ matrix.provider }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      # Checksums, since every rebuilt file has a new mtime; delete drops packages removed from packages.yaml.
+      - name: Rsync feed to the bucket
+        env:
+          BUCKET: ${{ matrix.bucket }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add catalog.json docs/CATALOG.md
-          git diff --cached --quiet || git commit -m "chore(feed): publish ${{ needs.build.outputs.package_count }} packages [skip ci]"
-          git push
+          gcloud storage rsync --recursive --checksums-only --delete-unmatched-destination-objects \
+            feed/ "gs://${BUCKET}/choco/"

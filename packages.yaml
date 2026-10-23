@@ -1,5 +1,5 @@
 # Curated Chocolatey packages mirrored from community.chocolatey.org into the OpenFrame feed.
-# Only the wrapper (.nupkg) is mirrored; installers are downloaded from the vendor at install time.
+# FOSS packages embed their installer; proprietary ones download from the vendor at install time.
 # Dependencies declared in each .nuspec are resolved and mirrored automatically by scripts/sync-community.py.
 source: https://community.chocolatey.org/api/v2/
 

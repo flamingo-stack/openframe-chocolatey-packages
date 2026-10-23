@@ -2,13 +2,12 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>openframe-client</id>
-    <!-- bumped by CI from the agent release it tracks; the asset endpoint always serves the tenant's current build -->
+    <!-- bumped only when tools/ changes; the asset endpoint always serves the tenant's current build -->
     <version>1.0.0</version>
     <title>OpenFrame Client (agent)</title>
     <authors>Flamingo</authors>
     <owners>Flamingo</owners>
     <projectUrl>https://openframe.ai</projectUrl>
-    <licenseUrl>https://github.com/flamingo-stack/openframe-chocolatey-packages/blob/main/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <summary>Installs and enrolls the OpenFrame agent on a Windows machine.</summary>
     <description>
