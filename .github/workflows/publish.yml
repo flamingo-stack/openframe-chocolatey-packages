@@ -139,6 +139,7 @@ jobs:
     needs: [build, test_install]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: ${{ matrix.env }}   # stage/prod providers only accept a token from their own GitHub environment
     permissions:
       contents: read
       id-token: write
