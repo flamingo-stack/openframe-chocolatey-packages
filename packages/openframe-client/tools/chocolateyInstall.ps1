@@ -1,40 +1,34 @@
-$ErrorActionPreference = 'Stop'
-$toolsDir    = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$packageName = 'openframe-client'
+﻿$ErrorActionPreference = 'Stop'
 
-# --params "/ServerUrl:host /InitialKey:... /OrgId:... /UserId:... [/MachineId:guid]"
-$pp = Get-PackageParameters
-foreach ($required in 'ServerUrl', 'InitialKey', 'OrgId', 'UserId') {
-  if (-not $pp[$required]) { throw "$packageName`: missing required package parameter /$required" }
+$serviceName = 'com.openframe.client'
+
+if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
+  Write-Host "OpenFrame Client service '$serviceName' is already installed. Skipping install; updates are delivered by the OpenFrame platform."
+  return
 }
-$serverUrl = ($pp['ServerUrl'] -replace '^https?://', '').TrimEnd('/')
-$machineId = if ($pp['MachineId']) { $pp['MachineId'] } else { [guid]::NewGuid().ToString() }
 
-# Same download the manual bootstrap script does: the tenant's asset endpoint, keyed by machine id.
-# https + tenant host means no checksum can be pinned here: the endpoint always serves the tenant's current build.
-$zip = Join-Path $toolsDir "$packageName.zip"
-Get-ChocolateyWebFile -PackageName $packageName -FileFullPath $zip `
-  -Url "https://$serverUrl/v0/api/assets/download?agent=client&platform=windows" `
-  -Options @{ Headers = @{ 'x-machine-id' = $machineId } }
+$temp = Join-Path $env:TEMP ('openframe-install-' + [guid]::NewGuid().ToString())
 
-Get-ChocolateyUnzip -FileFullPath $zip -Destination $toolsDir -PackageName $packageName
-Remove-Item $zip -Force -ErrorAction SilentlyContinue
+$packageArgs = @{
+  packageName    = $env:ChocolateyPackageName
+  unzipLocation  = $temp
+  url64bit       = 'https://openframe.ai/v0/api/assets/download?agent=client&platform=windows&version=1.5.100'
+  checksum64     = '9ed4b0c632e48f4dd4397fcbc6044e489edde0da456749a71e6eb97cbe4b2b8c'
+  checksumType64 = 'sha256'
+}
 
-$exe = Join-Path $toolsDir "$packageName.exe"
-if (-not (Test-Path $exe)) { throw "$packageName`: $exe not found after unzip" }
-# the exe is an installer/CLI, not a tool users call: no shim in C:\ProgramData\chocolatey\bin
-New-Item -Path "$exe.ignore" -ItemType File -Force | Out-Null
+try {
+  Install-ChocolateyZipPackage @packageArgs
 
-$arguments = @(
-  'install',
-  '--serverUrl',  $serverUrl,
-  '--initialKey', $pp['InitialKey'],
-  '--orgId',      $pp['OrgId'],
-  '--userId',     $pp['UserId']
-)
-Write-Host "$packageName`: enrolling machine $machineId with $serverUrl"
-$process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru -NoNewWindow
-if ($process.ExitCode -ne 0) { throw "$packageName`: install exited with code $($process.ExitCode)" }
-
-# remembered for uninstall and for re-runs of the package
-@{ ServerUrl = $serverUrl; MachineId = $machineId } | ConvertTo-Json | Set-Content (Join-Path $toolsDir 'enrollment.json')
+  $exe = Join-Path $temp 'openframe-client.exe'
+  $ErrorActionPreference = 'Continue'
+  & $exe install 2>&1 | ForEach-Object { "$_" }
+  $exitCode = $LASTEXITCODE
+  $ErrorActionPreference = 'Stop'
+  if ($exitCode -ne 0) {
+    throw "openframe-client install failed with exit code $exitCode"
+  }
+}
+finally {
+  Remove-Item -Path $temp -Recurse -Force -ErrorAction SilentlyContinue
+}

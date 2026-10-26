@@ -43,9 +43,12 @@ Local run of the first three scripts: `python3 scripts/sync-community.py && pyth
 
 ## Notes
 
-1. Not link-only: FOSS packages embed the installer (`7zip.install` 2.9 MB, `notepadplusplus.install` 13 MB,
-   `git.install` 62 MB, `vlc.install` 87 MB, `chocolatey` 5.4 MB). Proprietary ones (Chrome, Firefox, Adobe Reader, KBs)
-   download from the vendor at install time.
+1. Link-only: community FOSS packages embed their installer (`git.install` 66 MB, `vlc.install` 91 MB, ...).
+   `link_only` in the sync downloads each URL in `legal/VERIFICATION.txt`, pairs it with the embedded file by sha256,
+   drops the file and prepends a `Get-ChocolateyWebFile` with that URL and sha256 to `chocolateyInstall.ps1`; an
+   installer with no matching URL fails the sync. The feed is ~6 MB; only `chocolatey` keeps `choco.exe` (no vendor
+   URL, and endpoints bootstrap choco from this feed). Rewritten packages no longer match the community `PackageHash`,
+   which is checked before the rewrite.
 2. `7zip`, `git`, `vlc`, `notepadplusplus` are metapackages pinning `<id>.install`; agents install the metapackage id.
 3. `chocolatey-core.extension` is a dependency of almost everything; without it in the feed installs fail.
 4. Chrome pins the sha256 of an unversioned vendor MSI that Google overwrites on release; community re-publishes within a
