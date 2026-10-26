@@ -4,7 +4,7 @@
 Reads packages.yaml, resolves the dependency closure declared in each .nuspec, downloads every
 .nupkg into downloads/, and writes catalog.json with provenance (source URL, hash, size,
 dependencies, vendor download URLs + checksums extracted from tools/chocolateyInstall.ps1).
-Installers are not fetched separately: whatever the .nupkg embeds is all the feed holds.
+Embedded installers are replaced by a download from the vendor (link_only), except choco itself.
 """
 import base64
 import hashlib
@@ -30,6 +30,8 @@ NS = {
     "m": "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata",
 }
 UA = "openframe-chocolatey-packages-sync/0.1 (+https://flamingo.cx)"
+BINARY_EXT = (".exe", ".msi", ".msu", ".msp", ".zip", ".7z", ".cab")
+KEEP_EMBEDDED = {"chocolatey"}  # choco.exe has no vendor URL, and endpoints bootstrap choco from this feed
 
 
 def read_packages_yaml(path: Path):
@@ -145,6 +147,48 @@ def nuspec_meta(nupkg: bytes):
         }, script
 
 
+def link_only(pkg_id: str, nupkg: bytes) -> bytes:
+    """Replace installers embedded in tools/ with a download from the vendor URL in legal/VERIFICATION.txt.
+
+    Each URL is downloaded here and paired with an embedded file by sha256, so the endpoint gets the same bytes,
+    re-checked by choco against that sha256. Every embedded installer must match, or the sync fails.
+    """
+    with zipfile.ZipFile(io.BytesIO(nupkg)) as z:
+        names = z.namelist()
+        binaries = [n for n in names if n.lower().startswith("tools/") and n.lower().endswith(BINARY_EXT)]
+        if not binaries or pkg_id.lower() in KEEP_EMBEDDED:
+            return nupkg
+        verification = next((n for n in names if n.lower().endswith("verification.txt")), None)
+        text = z.read(verification).decode("utf-8", "replace") if verification else ""
+        by_sha = {}
+        for url in sorted(set(re.findall(r"https?://[^\s<>'\"]+", text))):
+            if urllib.parse.urlparse(url).path.lower().endswith(BINARY_EXT):
+                by_sha[hashlib.sha256(get(url, accept="application/octet-stream")).hexdigest()] = url
+        files = []
+        for n in binaries:
+            sha = hashlib.sha256(z.read(n)).hexdigest()
+            if sha not in by_sha:
+                raise SystemExit(f"{pkg_id}: embedded {n} matches no vendor URL in VERIFICATION.txt")
+            files.append((n.split("/", 1)[1].replace("/", "\\"), by_sha[sha], sha))
+        install = next(n for n in names if n.lower() == "tools/chocolateyinstall.ps1")
+        stub = "\n".join(
+            ["# openframe feed: installers download from the vendor instead of shipping in the package",
+             "$ofToolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition"]
+            + [f"Get-ChocolateyWebFile -PackageName $env:ChocolateyPackageName -FileFullPath (Join-Path $ofToolsDir '{f}') "
+               f"-Url '{u}' -Checksum '{c}' -ChecksumType sha256" for f, u, c in files]) + "\n\n"
+        out = io.BytesIO()
+        with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as o:
+            for info in z.infolist():
+                if info.filename in binaries:
+                    continue
+                body = z.read(info)
+                if info.filename == install:
+                    body = ("\ufeff" + stub + body.decode("utf-8-sig")).encode("utf-8")
+                o.writestr(info, body)
+    print(f"  link-only: {len(files)} installer(s) from the vendor", file=sys.stderr)
+    return out.getvalue()
+
+
 def vendor_links(script: str):
     """Pull the vendor download URLs and checksums out of chocolateyInstall.ps1 (best effort)."""
     urls = sorted(set(re.findall(r"https?://[^\s'\"<>)]+", script)))
@@ -173,6 +217,7 @@ def main():
         algo = entry["package_hash_algorithm"].lower()
         if base64.b64encode(hashlib.new(algo, data).digest()).decode() != entry["package_hash"]:
             raise SystemExit(f"{pkg_id} {entry['version']}: {algo} differs from the community PackageHash")
+        data = link_only(pkg_id, data)
         meta, script = nuspec_meta(data)
         fname = f"{meta['id']}.{meta['version']}.nupkg"
         (DOWNLOADS / fname).write_bytes(data)

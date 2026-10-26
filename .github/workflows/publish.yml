@@ -36,7 +36,7 @@ concurrency:
 
 env:
   SLEET_VERSION: "7.2.0"
-  TEST_PACKAGES: "7zip googlechrome notepadplusplus firefox"
+  TEST_PACKAGES: "7zip git vlc googlechrome notepadplusplus firefox"
 
 # =============================================================================
 # JOBS
