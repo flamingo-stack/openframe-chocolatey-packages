@@ -13,7 +13,7 @@ permissions:
 
 on:
   schedule:
-    - cron: "17 5 * * *"   # daily; community re-publishes checksum-pinned packages (Chrome) within a day of a vendor release
+    - cron: "23 5 * * *"   # daily; community re-publishes checksum-pinned packages (Chrome) within a day of a vendor release
   workflow_dispatch:
   pull_request:
     branches: [main]
@@ -55,7 +55,7 @@ jobs:
         run: python3 scripts/sync-community.py
 
       - name: Pack own packages
-        run: python3 scripts/pack-own.py
+        run: python3 scripts/pack-own.py prod
 
       - name: Render catalog
         run: |
@@ -176,7 +176,11 @@ jobs:
       - name: Build feed
         env:
           BASE_URI: ${{ matrix.base_uri }}
-        run: scripts/build-feed.sh feed "$BASE_URI"
+          ENV: ${{ matrix.env }}
+        run: |
+          python3 scripts/pack-own.py "$ENV"
+          scripts/build-feed.sh feed "$BASE_URI"
+          cp catalog.json feed/   # curated/dependency/own per id; the backend's package search reads it
 
       - uses: google-github-actions/auth@v3
         with:

@@ -1,0 +1,17 @@
+{
+  "dev": {
+    "version": "1.5.101",
+    "sha256": "61b53d43c25a9a5aeb1b585cbd6f1f7c19e671059f67132f54bbc894e1aba6d7",
+    "host": "qa.openframe.build"
+  },
+  "stage": {
+    "version": "1.5.100",
+    "sha256": "9ed4b0c632e48f4dd4397fcbc6044e489edde0da456749a71e6eb97cbe4b2b8c",
+    "host": "openframe.miami"
+  },
+  "prod": {
+    "version": "1.5.100",
+    "sha256": "9ed4b0c632e48f4dd4397fcbc6044e489edde0da456749a71e6eb97cbe4b2b8c",
+    "host": "openframe.ai"
+  }
+}
