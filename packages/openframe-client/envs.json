@@ -10,8 +10,8 @@
     "host": "openframe.miami"
   },
   "prod": {
-    "version": "1.5.103",
-    "sha256": "379473af0058736b10d3362a92842e7e9f291e7d38fbce6903dfbdbfdfe63bd4",
+    "version": "1.5.107",
+    "sha256": "11d21ccb83b3528fd4cb62f0286a38a645061a2893cc19c3096ee1e3ef54042d",
     "host": "openframe.ai"
   }
 }
