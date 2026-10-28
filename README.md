@@ -16,7 +16,8 @@ every 5 minutes and serves it through the platform Gateway, so a publish is live
 ## Layout
 
 - `packages.yaml`: curated community ids. Dependencies declared in each `.nuspec` are mirrored too.
-- `packages/<id>/`: our own packages (nuspec + `tools/`), e.g. [`openframe-client`](packages/openframe-client).
+- `packages/<id>/`: our own packages (nuspec + `tools/`): [`openframe-client`](packages/openframe-client) and
+  [`openframe-console`](packages/openframe-console).
 - `scripts/sync-community.py`: highest approved, non-prerelease version of each id from the v2 OData API
   (`IsLatestVersion` is unreliable), checked against the community `PackageHash`; follows dependencies, writes
   `downloads/` and `catalog.json`.
@@ -60,3 +61,7 @@ Local run of the first three scripts: `python3 scripts/sync-community.py && pyth
    GitHub release behind it must never be deleted.
 5. Chrome pins the sha256 of an unversioned vendor MSI that Google overwrites on release; community re-publishes within a
    day, so the sync runs daily.
+6. `openframe-console` (the OpenFrame Console desktop app) has no `envs.json`: every feed gets the latest
+   openframe-oss-frontend GitHub release, with the sha256 of its x64 and arm64 setups, bumped here by hand. An installed
+   app then updates itself from the environment it signs in to. The `community` job doesn't push it yet: its first
+   community.chocolatey.org version is submitted by hand.
