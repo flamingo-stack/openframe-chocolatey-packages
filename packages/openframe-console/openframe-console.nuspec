@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>openframe-console</id>
+    <version>1.0.193</version>
+    <packageSourceUrl>https://github.com/flamingo-stack/openframe-chocolatey-packages/tree/main/packages/openframe-console</packageSourceUrl>
+    <owners>Openframe</owners>
+    <title>OpenFrame Console</title>
+    <authors>Flamingo AI, Inc.</authors>
+    <projectUrl>https://openframe.ai/</projectUrl>
+    <iconUrl>https://cdn.jsdelivr.net/gh/flamingo-stack/openframe-oss-frontend@main/apps/desktop/src-tauri/icons/128x128.png</iconUrl>
+    <copyright>Copyright © 2026 Flamingo AI, Inc.</copyright>
+    <licenseUrl>https://github.com/flamingo-stack/openframe-oss-frontend/blob/main/LICENSE.md</licenseUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/flamingo-stack/openframe-oss-frontend/tree/main/apps/desktop</projectSourceUrl>
+    <docsUrl>https://github.com/flamingo-stack/openframe-oss-frontend/blob/main/apps/desktop/README.md#install</docsUrl>
+    <bugTrackerUrl>https://github.com/flamingo-stack/openframe-oss-frontend/issues</bugTrackerUrl>
+    <tags>openframe msp rmm it-management console notifications</tags>
+    <summary>Desktop app of the OpenFrame platform: your OpenFrame workspace in its own window, with notifications that keep arriving from the tray</summary>
+    <description><![CDATA[**OpenFrame Console** is the desktop app of the [OpenFrame](https://openframe.ai/) platform (remote monitoring and management for MSPs) by Flamingo AI, Inc. It requires an OpenFrame account: sign in with your email and the app finds your workspace.
+
+What it adds over the browser tab: OS notifications that keep arriving while the app sits in the tray, a session that survives long idle, and Start at Login.
+
+**Installs for the user who runs choco**, into `%LOCALAPPDATA%\OpenFrame Console`, with Start menu and desktop shortcuts. Run choco from that user's own elevated terminal: an install from another account (or SYSTEM) lands in that account's profile.
+
+**Updates:** the app updates itself from your OpenFrame environment; `choco upgrade openframe-console` installs the newest package version over it.
+
+**Uninstall** (`choco uninstall openframe-console`) removes the app silently. Settings and the session stay in `%APPDATA%\com.openframe.console`.
+
+Documentation: https://github.com/flamingo-stack/openframe-oss-frontend/blob/main/apps/desktop/README.md#install
+]]></description>
+    <releaseNotes>https://github.com/flamingo-stack/openframe-oss-frontend/releases/tag/1.0.193</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
