@@ -7,6 +7,7 @@ name: Publish Chocolatey Feed
 # 2) Installs them with choco 2.x on Windows from a localhost copy of the feed.
 # 3) On main, builds the feed per env (baseURI is baked into every URL) and rsyncs it to choco/ of that env's
 #    client feed bucket, through WIF bound to this repo's main branch (openframe-saas-tf 00-wif + 03-shared).
+# 4) On main, pushes the prod openframe-client to community.chocolatey.org once per version.
 
 permissions:
   contents: read
@@ -196,6 +197,31 @@ jobs:
           BASE_URI: ${{ matrix.base_uri }}
           ENV: ${{ matrix.env }}
         run: python3 scripts/verify-feed.py "$ENV" "$BASE_URI"
+
+
+  community:
+    name: "Push openframe-client to community.chocolatey.org"
+    needs: [build, test_install]
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest   # ships Chocolatey CLI
+    environment: prod
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: packages
+
+      # Build packs prod; re-pushing a version still in moderation restarts its review, so any existing version is skipped.
+      - name: Push the prod package
+        shell: pwsh
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+        run: |
+          $nupkg = Get-Item downloads/openframe-client.*.nupkg
+          $version = $nupkg.BaseName -replace '^openframe-client\.', ''
+          $page = Invoke-WebRequest "https://community.chocolatey.org/packages/openframe-client/$version" -SkipHttpErrorCheck
+          if ($page.StatusCode -eq 200) { Write-Host "openframe-client $version is already on community"; exit 0 }
+          choco push $nupkg.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCO_API_KEY
+          if ($LASTEXITCODE -ne 0) { throw "choco push failed with exit code $LASTEXITCODE" }
 
 
   all-checks:

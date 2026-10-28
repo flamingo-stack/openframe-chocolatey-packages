@@ -54,6 +54,9 @@ Local run of the first three scripts: `python3 scripts/sync-community.py && pyth
 3. `chocolatey-core.extension` is a dependency of almost everything; without it in the feed installs fail.
 4. `openframe-client` follows each env's release: `packages/openframe-client/envs.json` holds the version and sha256
    per feed (dev = QA, stage, prod) and the host that serves its download; the promote job in openframe-saas-tenant
-   `release.yml` commits that env's entry, and the push publishes it.
+   `release.yml` commits that env's entry, and the push publishes it. The prod package is also pushed to
+   community.chocolatey.org (job `community`, key `CHOCO_API_KEY` of the `Openframe` account in the `prod` environment),
+   so `choco install openframe-client` works without a source; each version pins `version=X`, so the saas-tenant
+   GitHub release behind it must never be deleted.
 5. Chrome pins the sha256 of an unversioned vendor MSI that Google overwrites on release; community re-publishes within a
    day, so the sync runs daily.
