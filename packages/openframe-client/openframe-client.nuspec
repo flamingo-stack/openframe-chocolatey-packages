@@ -3,7 +3,7 @@
   <metadata>
     <id>openframe-client</id>
     <version>$version$</version>
-    <packageSourceUrl>https://github.com/flamingo-stack/openframe-oss-lib/tree/main/clients/openframe-client/packaging/choco</packageSourceUrl>
+    <packageSourceUrl>https://github.com/flamingo-stack/openframe-chocolatey-packages/tree/main/packages/openframe-client</packageSourceUrl>
     <owners>Openframe</owners>
     <title>OpenFrame Client</title>
     <authors>Flamingo AI, Inc.</authors>
