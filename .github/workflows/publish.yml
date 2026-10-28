@@ -32,7 +32,8 @@ concurrency:
 
 env:
   SLEET_VERSION: "7.2.0"
-  TEST_PACKAGES: "7zip git vlc googlechrome notepadplusplus firefox"
+  # No googlechrome: it pins the sha of an MSI Google overwrites in place, so it fails until community re-publishes and blocks every publish.
+  TEST_PACKAGES: "7zip git vlc notepadplusplus firefox"
 
 # =============================================================================
 # JOBS
