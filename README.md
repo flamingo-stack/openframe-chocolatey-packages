@@ -61,7 +61,7 @@ Local run of the first three scripts: `python3 scripts/sync-community.py && pyth
    GitHub release behind it must never be deleted.
 5. Chrome pins the sha256 of an unversioned vendor MSI that Google overwrites on release; community re-publishes within a
    day, so the sync runs daily.
-6. `openframe-console` (the OpenFrame Console desktop app) has no `envs.json`: every feed gets the version prod serves
-   at `/v0/api/assets/download?agent=desktop`, with the sha256 of its x64 and arm64 setups from that
-   openframe-oss-frontend GitHub release, bumped here by hand. The `community` job doesn't push it yet: its first
+6. `openframe-console` (the OpenFrame Console desktop app) has no `envs.json`: every feed gets the latest
+   openframe-oss-frontend GitHub release, with the sha256 of its x64 and arm64 setups, bumped here by hand. An installed
+   app then updates itself from the environment it signs in to. The `community` job doesn't push it yet: its first
    community.chocolatey.org version is submitted by hand.

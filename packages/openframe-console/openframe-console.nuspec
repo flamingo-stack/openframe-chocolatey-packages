@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>openframe-console</id>
-    <version>1.0.193</version>
+    <version>1.0.196</version>
     <packageSourceUrl>https://github.com/flamingo-stack/openframe-chocolatey-packages/tree/main/packages/openframe-console</packageSourceUrl>
     <owners>Openframe</owners>
     <title>OpenFrame Console</title>
@@ -29,7 +29,7 @@ What it adds over the browser tab: OS notifications that keep arriving while the
 
 Documentation: https://github.com/flamingo-stack/openframe-oss-frontend/blob/main/apps/desktop/README.md#install
 ]]></description>
-    <releaseNotes>https://github.com/flamingo-stack/openframe-oss-frontend/releases/tag/1.0.193</releaseNotes>
+    <releaseNotes>https://github.com/flamingo-stack/openframe-oss-frontend/releases/tag/1.0.196</releaseNotes>
   </metadata>
   <files>
     <file src="tools\**" target="tools" />
