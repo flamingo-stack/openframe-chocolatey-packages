@@ -7,7 +7,7 @@ name: Publish Chocolatey Feed
 # 2) Installs them with choco 2.x on Windows from a localhost copy of the feed.
 # 3) On main, builds the feed per env (baseURI is baked into every URL) and rsyncs it to choco/ of that env's
 #    client feed bucket, through WIF bound to this repo's main branch (openframe-saas-tf 00-wif + 03-shared).
-# 4) On main, pushes the prod openframe-client to community.chocolatey.org once per version.
+# 4) On main, pushes the prod openframe-client to community.chocolatey.org and submits it to winget-pkgs, once per version.
 
 permissions:
   contents: read
@@ -32,6 +32,7 @@ concurrency:
 
 env:
   SLEET_VERSION: "7.2.0"
+  KOMAC_VERSION: "2.17.1"
   # No googlechrome: it pins the sha of an MSI Google overwrites in place, so it fails until community re-publishes and blocks every publish.
   TEST_PACKAGES: "7zip git vlc notepadplusplus firefox"
 
@@ -223,6 +224,27 @@ jobs:
           if ($page.StatusCode -eq 200) { Write-Host "openframe-client $version is already on community"; exit 0 }
           choco push $nupkg.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCO_API_KEY
           if ($LASTEXITCODE -ne 0) { throw "choco push failed with exit code $LASTEXITCODE" }
+
+
+  winget:
+    name: "Submit openframe-client to winget-pkgs"
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # komac skips a version that already has a winget-pkgs PR (any state), so each version is submitted once.
+      - name: Submit the prod version
+        env:
+          GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          version=$(jq -r .prod.version packages/openframe-client/envs.json)
+          curl -fsSL "https://github.com/russellbanks/Komac/releases/download/v${KOMAC_VERSION}/komac-${KOMAC_VERSION}-x86_64-unknown-linux-gnu.tar.gz" | tar xz komac
+          ./komac update FlamingoAI.OpenFrameClient --version "$version" --submit \
+            --urls "https://openframe.ai/v0/api/assets/download?agent=client&platform=windows&version=$version"
 
 
   all-checks:
