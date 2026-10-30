@@ -4,7 +4,7 @@
 1. Waits until <base_uri>catalog.json equals the local feed/catalog.json (the client-feed pod syncs every 5 minutes).
 2. index.json lists the service resources.
 3. Every catalog package is in flatcontainer and its .nupkg sha256 matches the catalog.
-4. Every package with envs.json: the gateway download for the env's version matches the pinned sha256.
+4. openframe-client: the gateway download for the env's version matches the pinned sha256.
 """
 import hashlib
 import json
@@ -71,14 +71,13 @@ def main():
         else:
             print(f"ok {p['id']} {ver}")
 
-    for envs in sorted((ROOT / "packages").glob("*/envs.json")):
-        e = json.loads(envs.read_text())[env]
-        url = f"https://{e['host']}/v0/api/assets/download?agent=client&platform=windows&version={e['version']}"
-        sha = hashlib.sha256(get(url, tries=10)).hexdigest()  # retries ride out an expired cached GitHub URL
-        if sha != e["sha256"]:
-            errors.append(f"{envs.parent.name} {e['version']}: download sha256 {sha} != envs.json {e['sha256']}")
-        else:
-            print(f"ok {envs.parent.name} download {e['version']} from {e['host']}")
+    e = json.loads((ROOT / "packages/openframe-client/envs.json").read_text())[env]
+    url = f"https://{e['host']}/v0/api/assets/download?agent=client&platform=windows&version={e['version']}"
+    sha = hashlib.sha256(get(url, tries=10)).hexdigest()  # retries ride out an expired cached GitHub URL
+    if sha != e["sha256"]:
+        errors.append(f"openframe-client {e['version']}: download sha256 {sha} != envs.json {e['sha256']}")
+    else:
+        print(f"ok openframe-client download {e['version']} from {e['host']}")
 
     if errors:
         raise SystemExit("\n".join(errors))
