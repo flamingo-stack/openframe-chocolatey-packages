@@ -58,10 +58,14 @@ Local run of the first three scripts: `python3 scripts/sync-community.py && pyth
    `release.yml` commits that env's entry, and the push publishes it. The prod package is also pushed to
    community.chocolatey.org (job `community`, key `CHOCO_API_KEY` of the `Openframe` account in the `prod` environment),
    so `choco install openframe-client` works without a source; each version pins `version=X`, so the saas-tenant
-   GitHub release behind it must never be deleted.
+   GitHub release behind it must never be deleted. Job `winget` submits the same version to microsoft/winget-pkgs as
+   `FlamingoAI.OpenFrameClient` with komac (`WINGET_TOKEN` in the `prod` environment: classic PAT with `public_repo` of
+   a machine user that signed the Microsoft CLA; komac forks winget-pkgs into that account). One prod package serves
+   every env: the agent takes its version from the tenant at registration.
 5. Chrome pins the sha256 of an unversioned vendor MSI that Google overwrites on release; community re-publishes within a
    day, so the sync runs daily.
-6. `openframe-console` (the OpenFrame Console desktop app) has no `envs.json`: every feed gets the latest
-   openframe-oss-frontend GitHub release, with the sha256 of its x64 and arm64 setups, bumped here by hand. An installed
-   app then updates itself from the environment it signs in to. The `community` job doesn't push it yet: its first
-   community.chocolatey.org version is submitted by hand.
+6. `openframe-console` (the OpenFrame Console desktop app) follows each env's frontend release the same way:
+   `packages/openframe-console/envs.json` holds the openframe-oss-frontend version and the sha256 of its x64 and arm64
+   setups (the release assets' GitHub digests) per feed; openframe-saas-tenant `release-openframe-frontend.yml` commits
+   that env's entry. An installed app then updates itself from the environment it signs in to. The `community` job
+   doesn't push it yet: its first community.chocolatey.org version is submitted by hand.
