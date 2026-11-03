@@ -5,9 +5,9 @@
     "sha256_arm64": "602e342db49258188382c4e758c8629641efc17220c2717754f5ce4bae99353b"
   },
   "stage": {
-    "version": "1.0.206",
-    "sha256_x64": "cd35f02075d17ed1d60be0b9683f56f17dd253c5b7b4e45762ab0b1b968572cc",
-    "sha256_arm64": "8a67894b537ccf0695b7d8585131ab191b5667baffa5934c5b518cc7461d0e5c"
+    "version": "1.0.207",
+    "sha256_x64": "8cce418bcf7b36ff061bf0de8e12b2bcceca21acdb8852ffff89a12f8a128e69",
+    "sha256_arm64": "602e342db49258188382c4e758c8629641efc17220c2717754f5ce4bae99353b"
   },
   "prod": {
     "version": "1.0.204",
