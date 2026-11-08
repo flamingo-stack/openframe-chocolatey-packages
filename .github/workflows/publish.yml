@@ -85,7 +85,6 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-
   test_install:
     name: Install Test
     needs: build
@@ -130,7 +129,6 @@ jobs:
           foreach ($id in $env:TEST_PACKAGES.Split(" ")) {
             choco uninstall $id -y --no-progress -x
           }
-
 
   publish:
     name: "Publish: ${{ matrix.env }}"
@@ -200,7 +198,6 @@ jobs:
           ENV: ${{ matrix.env }}
         run: python3 scripts/verify-feed.py "$ENV" "$BASE_URI"
 
-
   community:
     name: "Push openframe-client to community.chocolatey.org"
     needs: [build, test_install]
@@ -225,7 +222,6 @@ jobs:
           choco push $nupkg.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCO_API_KEY
           if ($LASTEXITCODE -ne 0) { throw "choco push failed with exit code $LASTEXITCODE" }
 
-
   winget:
     name: "Submit openframe-client to winget-pkgs"
     if: github.ref == 'refs/heads/main'
@@ -246,13 +242,3 @@ jobs:
           ./komac update FlamingoAI.OpenFrameClient --version "$version" --submit \
             --urls "https://openframe.ai/v0/api/assets/download?agent=client&platform=windows&version=$version"
 
-
-  all-checks:
-    name: "All Checks"
-    needs: [build, test_install]
-    runs-on: ubuntu-latest
-    if: always() && github.event_name == 'pull_request'   # required check on the main ruleset
-    steps:
-      - if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
-        run: exit 1
-      - run: echo "All checks passed"
