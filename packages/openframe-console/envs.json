@@ -1,8 +1,8 @@
 {
   "dev": {
-    "version": "1.0.268",
-    "sha256_x64": "fef295b70fc246a67292b0bb367ecf5cc9392c5472f80658f66973691c896d3b",
-    "sha256_arm64": "435045e914e8ae88ac83e927f4275fc91f1e5500b362e2296d425c98833378e9"
+    "version": "1.0.269",
+    "sha256_x64": "3730b51c8a234dd65aeb3810b3fe970d02cbbd610e781114b76e123b9e9b877f",
+    "sha256_arm64": "9026427b4be5fce8af191454c490f30d9367a81b00d98201ddf2931f490c78e1"
   },
   "stage": {
     "version": "1.0.260",
