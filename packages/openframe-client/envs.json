@@ -1,7 +1,7 @@
 {
   "dev": {
-    "version": "1.7.40",
-    "sha256": "1f3d606cbb88bd2e09fcb93d9c684fce505cefc91317d93d29ba5e7f0c2484a2",
+    "version": "1.7.44",
+    "sha256": "4afd6e1d70934fe54a4e0eceb40aed92667a8dfdc3f0b07214b6db5f8fea1fc0",
     "host": "qa.openframe.build"
   },
   "stage": {
