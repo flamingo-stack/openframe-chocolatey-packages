@@ -5,8 +5,8 @@
     "host": "qa.openframe.build"
   },
   "stage": {
-    "version": "1.7.56",
-    "sha256": "f966e90d4deb6375f75876b3003a66e39411e656bc8dec5713669d34d325c7b0",
+    "version": "1.7.65",
+    "sha256": "fe76418b12db0fb43772f85c542fe14ff3beb039103ddce11202e775c3470732",
     "host": "openframe.miami"
   },
   "prod": {
